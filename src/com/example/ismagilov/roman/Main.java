@@ -1,4 +1,4 @@
-package com.pluralsight.organized;
+package com.example.ismagilov.roman;
 
 
 public class Main {
