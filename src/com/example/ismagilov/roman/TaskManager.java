@@ -2,14 +2,13 @@ package com.example.ismagilov.roman;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 public class TaskManager {
-    List<String> tasks = new ArrayList<>();
-    List<Boolean> isCompleted = new ArrayList<>();
+    private final List<Task> tasks = new ArrayList<>();
 
     public void addTask(String task) {
-        tasks.add(task);
-        isCompleted.add(false);
+        tasks.add(new Task(task));
     }
 
     public void removeTask(int index) {
@@ -19,7 +18,6 @@ public class TaskManager {
         }
 
         tasks.remove(index);
-        isCompleted.remove(index);
     }
 
     public void markTaskAsCompleted(int index) {
@@ -28,21 +26,75 @@ public class TaskManager {
             return;
         }
 
-        isCompleted.set(index, true);
+        Task task = tasks.get(index);
+        task.setIsCompleted(true);
     }
 
-    public void editTask(int index, String newTask) {
+    public void editTask(int index, String newDescription) {
         if (isIndexInvalid(index)) {
             System.out.println("Invalid index when edit: " + index);
             return;
         }
 
-        tasks.set(index, newTask);
+        Task task = tasks.get(index);
+        task.setDescription(newDescription);
     }
 
     public void showTasks() {
         String report = generateReport();
         System.out.println(report);
+    }
+
+    public void searchTasks(String str) {
+        List<Task> filteredTasks = tasks.stream()
+                                        .filter(t -> t.getDescription().contains(str))
+                                        .toList();
+
+        StringBuilder result = new StringBuilder("Найденные задачи:\n");
+
+        for (int i = 0; i < filteredTasks.size(); i++) {
+            result.append(generateTaskForReport(i, filteredTasks));
+        }
+
+        System.out.println(result);
+    }
+
+    public void showCompletedTasks() {
+        List<Task> completedTasks = tasks.stream()
+                .filter(t -> t.getIsCompleted())
+                .toList();
+
+        StringBuilder result = new StringBuilder("Выполненные задачи:\n");
+
+        for (int i = 0; i < completedTasks.size(); i++) {
+            result.append(generateTaskForReport(i, completedTasks));
+        }
+
+        System.out.println(result);
+    }
+
+    public void showPendingTasks() {
+        List<Task> pendingTasks = tasks.stream()
+                .filter(t -> !t.getIsCompleted())
+                .toList();
+
+        StringBuilder result = new StringBuilder("Невыполненные задачи:\n");
+
+        for (int i = 0; i < pendingTasks.size(); i++) {
+            result.append(generateTaskForReport(i, pendingTasks));
+        }
+
+        System.out.println(result);
+    }
+
+    public void addTaskInteractively() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Введите описание новой задачи");
+        String str = scanner.nextLine();
+
+        this.addTask(str);
+
+        System.out.println("Задача " + "'" + str + "'" + " добавлена");
     }
 
     private boolean isIndexInvalid(int index) {
@@ -55,18 +107,26 @@ public class TaskManager {
         }
 
         StringBuilder result = new StringBuilder("=== Список задач ===\n");
-
         for (int i = 0; i < tasks.size(); i++) {
-            StringBuilder innerSb = new StringBuilder();
-            int orderNum = i + 1;
-            String status = isCompleted.get(i) ? "[x]" : "[ ]";
-
-            innerSb.append(orderNum).append(". ").append(status).append(" ").append(tasks.get(i)).append("\n");
-
-            result.append(innerSb);
+            result.append(generateTaskForReport(i, tasks));
         }
         result.append("=== Конец отчёта ===");
 
         return result.toString();
+    }
+
+    private StringBuilder generateTaskForReport(int i, List<Task> tasks) {
+        StringBuilder sb = new StringBuilder();
+        Task task = tasks.get(i);
+        int orderNum = i + 1;
+        String status = task.getIsCompleted() ? "[x]" : "[ ]";
+
+        sb.append(orderNum).append(". ")
+                .append(status)
+                .append(" ")
+                .append(task.getDescription())
+                .append("\n");
+
+       return sb;
     }
 }
