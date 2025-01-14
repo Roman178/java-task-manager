@@ -1,37 +1,27 @@
 package com.example.ismagilov.roman;
 
-import java.util.UUID;
+import java.util.*;
 
 public class Task {
-    public UUID id = UUID.randomUUID();
-
+    public static Map<String, String> dictionary = new HashMap<>();
     private static int taskCounter;
 
-    private boolean isCompleted = false;
+    public UUID id = UUID.randomUUID();
+
     private String description = "Новая задача";
+    private boolean isCompleted = false;
     private String category = "Общие";
+    private Priority priority = Priority.MEDIUM;
+
+    static {
+        dictionary.put("description", "Описание");
+        dictionary.put("isCompleted", "Завершено/Не завершено");
+        dictionary.put("category", "Категория");
+        dictionary.put("priority", "Приоритет");
+    }
 
     public Task() {
         taskCounter++;
-    }
-
-    public Task(String description) {
-        this();
-        this.description = description;
-    }
-
-    public Task(String description, boolean isCompleted) {
-        this(description);
-        this.isCompleted = isCompleted;
-    }
-
-    public Task(String description, boolean isCompleted, String category) {
-        this(description, isCompleted);
-        this.category = category;
-    }
-
-    public static int getTaskCounter() {
-        return taskCounter;
     }
 
     public boolean getIsCompleted() {
@@ -54,29 +44,76 @@ public class Task {
         return category;
     }
 
-    public void setCategory(String category) {
+    private void setCategory(String category) {
         this.category = category;
     }
 
-    public void updateAll(String[] parameters) {
-        switch (parameters.length) {
-            case 2: {
-                setDescription(parameters[1]);
-                break;
-            }
-            case 3: {
-                boolean isCompleted = parameters[2].equals("1");
-                setDescription(parameters[1]);
-                setIsCompleted(isCompleted);
-                break;
-            }
-            case 4: {
-                boolean isCompleted = Integer.parseInt(parameters[2]) == 1;
-                setDescription(parameters[1]);
-                setIsCompleted(isCompleted);
-                setCategory(parameters[3]);
-                break;
+    public Priority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(Priority value) {
+        this.priority = value;
+    }
+
+
+    public void updateByParameters(String[] parameters) {
+        for (int i = 0; i < parameters.length; i++) {
+            switch (i) {
+                case 0:
+                    setDescription(parameters[i]);
+                    break;
+                case 1:
+                    setIsCompleted(handleIsCompletedParameter(parameters[i]));
+                    break;
+                case 2:
+                    setCategory(parameters[i]);
+                    break;
+                case 3:
+                    setPriority(Priority.fromString(parameters[i]));
+                    break;
             }
         }
+    }
+
+    private boolean handleIsCompletedParameter(String isCompletedCommand) {
+        if (isCompletedCommand.equals("1")) {
+            return true;
+        }
+
+        if (isCompletedCommand.equals("0")) {
+            return false;
+        }
+
+        return isCompleted;
+    }
+
+    public List<String> checkParameters(String[] parameters) {
+        List<String> res = new ArrayList<>();
+
+        for (int index = 0; index < parameters.length; index++) {
+            switch (index) {
+                case 1:
+                    String isCompletedStr = parameters[index];
+                    if (!(isCompletedStr.equals("1") || isCompletedStr.equals("0"))) {
+                        res.add("isCompleted");
+                    }
+                    break;
+                case 3:
+                    String priorityStr = parameters[index];
+                    if (Priority.fromString(priorityStr) == null) {
+                        res.add("priority");
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return res;
+    }
+
+    public static int getTaskCounter() {
+        return taskCounter;
     }
 }

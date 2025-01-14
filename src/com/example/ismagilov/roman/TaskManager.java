@@ -3,135 +3,37 @@ package com.example.ismagilov.roman;
 import java.util.*;
 
 public class TaskManager {
-    public static int maxTasks = 5;
+    public static int maxTasks = 7;
 
     private List<Task> tasks = new ArrayList<>();
-    private final Scanner scanner = new Scanner(System.in);
 
-    public static Task createDefaultTask() {
-        return new Task("Задача по умолчанию", false, "Общие");
-    }
-
-    static {
-        TaskManager taskManager = new TaskManager();
-        String[] arr = {"Пример задачи 1", "Пример задачи 2","Пример задачи 3","Пример задачи 4" };
-        for (String taskDescription: arr) {
-            taskManager.addTask(taskDescription);
-        }
-        taskManager.showTasks();
-    }
-
-    public void runInteractively() {
-        System.out.println("""
-                
-                
-                Введите команду для управления задачами. Параметры через запятую с пробелом.
-                Команды:
-                add, сходить в магазин[opt.], 0[opt.], Дом[opt.]
-                edit, 3, сходить на рынок
-                remove, 3
-                show tasks
-                show completed tasks
-                show pending tasks
-                search tasks, bla-bla
-                exit
-                """);
-        String command = scanner.nextLine();
-        handleCommand(command);
-
-        if (!command.equals("exit")) {
-            runInteractively();
-        }
-    }
-
-    private void handleCommand(String command) {
-        String[] arr = command.split(", ");
-        String mainCommand = arr[0];
-        String[] parameters = Arrays.copyOfRange(arr, 1, arr.length);
-
-        switch (mainCommand) {
-            case "add":
-                handleAddingTask(parameters);
-                break;
-            case "edit":
-                handleEditingTask(parameters);
-                break;
-            case "remove":
-                removeTask(parameters);
-                break;
-            case "show tasks":
-                showTasks();
-                break;
-            case "show completed tasks":
-                showCompletedTasks();
-                break;
-            case "show pending tasks":
-                showPendingTasks();
-                break;
-            case "search tasks":
-                searchTasks(parameters[0]);
-                break;
-            case "exit":
-                System.out.println("exited");
-                break;
-            default:
-                System.out.println("Невалидная команда");
-                break;
-
-        }
-    }
-
-    private void handleAddingTask(String[] parameters) {
-        switch (parameters.length) {
-            case 0:
-                addTask();
-                break;
-            case 1:
-                addTask(parameters[0]);
-                break;
-            case 2: {
-                BinaryValue isCompleted = BinaryValue.fromInt(Integer.parseInt(parameters[1]));
-                addTask(parameters[0], isCompleted);
-                break;
-            }
-            case 3: {
-                BinaryValue isCompleted = BinaryValue.fromInt(Integer.parseInt(parameters[1]));
-                addTask(parameters[0], isCompleted, parameters[2]);
-                break;
-            }
-            default:
-                break;
-        }
-    }
-
-    private  void handleEditingTask(String[] parameters) {
-        UUID id = UUID.fromString(parameters[0]);
+    public void handleEditingTask(String[] parametersWithId) {
+        UUID id = UUID.fromString(parametersWithId[0]);
+        String[] parameters = Arrays.copyOfRange(parametersWithId, 1, parametersWithId.length);
         Optional<Task> task = tasks.stream().filter(t -> t.id.equals(id)).findFirst();
 
         task.ifPresentOrElse(tsk -> {
-                    tsk.updateAll(parameters);
-                    System.out.println("Задача с id " + id + " обновлена");
+                    updateTaskByParams(tsk, parameters, "Задача с id " + id + " обновлена");
                 },
                 () -> System.out.println("Задача с id " + id + " не найдена"));
     }
 
-    public void addTask() {
-        addTask("Какая-то задача");
+    private void updateTaskByParams(Task task, String[] parameters, String successMsg) {
+        List<String> invalidParameters = task.checkParameters(parameters);
+        if (invalidParameters.isEmpty()) {
+            task.updateByParameters(parameters);
+            System.out.println(successMsg);
+        } else {
+            List<String> readableParams = invalidParameters.stream().map(p -> Task.dictionary.get(p)).toList();
+            String res = String.join(", ", readableParams);
+            System.out.println("Введенные параметры невалидны: " + res);
+        }
     }
 
-    public void addTask(String task) {
-        addTask(task, BinaryValue.ZERO);
-    }
-
-    public void addTask(String task, BinaryValue isCompleted) {
-        addTask(task, isCompleted, "Общее");
-    }
-
-    public void addTask(String task, BinaryValue isCompletedNum, String category) {
+    public void addTask(String... parameters) {
         if (tasks.size() < maxTasks) {
-            boolean isCompleted = isCompletedNum == BinaryValue.ONE;
-            tasks.add(new Task(task, isCompleted, category));
-            System.out.println("Задача: " + task + " добавлена");
+              Task task = new Task();
+              updateTaskByParams(task, parameters, "Задача создана");
         } else {
             System.out.println("Превышен лимит задач. Максимум: " + maxTasks);
         }
@@ -150,30 +52,60 @@ public class TaskManager {
     }
 
     public void showTasks() {
-        if (tasks.isEmpty()) {
-            System.out.println("Список задач пуст");
-            return;
-        }
-        String report = generateReport();
+//        if (tasks.isEmpty()) {
+//            System.out.println("Список задач пуст");
+//            return;
+//        }
+        String report = generateReport("Задачи", "Список задач пуст", tasks);
         System.out.println(report);
     }
 
-    public void searchTasks(String str) {
-        List<Task> filteredTasks = tasks.stream()
-                                        .filter(t -> t.getDescription().contains(str))
-                                        .toList();
-        if (filteredTasks.isEmpty()) {
-            System.out.println("По фильтру задач не найдено");
+    public void searchTasks(String[] parameters) {
+        if (parameters.length == 0) {
+            System.out.println("Строка для фильтра не введена");
             return;
         }
 
-        StringBuilder result = new StringBuilder("Найденные задачи:\n");
+        String str = parameters[0];
+        List<Task> filteredTasks = tasks.stream()
+                                        .filter(t -> t.getDescription().contains(str))
+                                        .toList();
 
-        for (int i = 0; i < filteredTasks.size(); i++) {
-            result.append(generateTaskForReport(i, filteredTasks));
+        String report = generateReport("Найденные задачи", "По фильтру задач не найдено", filteredTasks);
+        System.out.println(report);
+//        if (filteredTasks.isEmpty()) {
+//            System.out.println("По фильтру задач не найдено");
+//            return;
+//        }
+//
+//        StringBuilder result = new StringBuilder("Найденные задачи:\n");
+//
+//        for (int i = 0; i < filteredTasks.size(); i++) {
+//            result.append(generateTaskForReport(i, filteredTasks));
+//        }
+//
+//        System.out.println(result);
+    }
+
+    public void showTasksByPriority(String[] parameters) {
+        if (parameters.length == 0) {
+            System.out.println("Не введен приоритет для вывода задач");
+            return;
         }
 
-        System.out.println(result);
+        Priority priority = Priority.fromString(parameters[0]);
+
+        if (priority == null) {
+            System.out.println("Невалидная строка приоритета. Введите: LOW, MEDIUM или HIGH");
+            return;
+        }
+
+        List<Task> filteredTasks = tasks.stream()
+                .filter(t -> t.getPriority().equals(priority))
+                .toList();
+
+        String report = generateReport("Задачи с приоритетом " + parameters[0], "Задач с приоритетом " + parameters[0] + " не найдено", filteredTasks);
+        System.out.println(report);
     }
 
     public void showCompletedTasks() {
@@ -181,18 +113,21 @@ public class TaskManager {
                 .filter(Task::getIsCompleted)
                 .toList();
 
-        if (completedTasks.isEmpty()) {
-            System.out.println("Выполненных задач не найдено");
-            return;
-        }
+        String report = generateReport("Выполненные задачи: ","Выполненных задач не найдено", completedTasks);
+        System.out.println(report);
 
-        StringBuilder result = new StringBuilder("Выполненные задачи:\n");
-
-        for (int i = 0; i < completedTasks.size(); i++) {
-            result.append(generateTaskForReport(i, completedTasks));
-        }
-
-        System.out.println(result);
+//        if (completedTasks.isEmpty()) {
+//            System.out.println("Выполненных задач не найдено");
+//            return;
+//        }
+//
+//        StringBuilder result = new StringBuilder("Выполненные задачи:\n");
+//
+//        for (int i = 0; i < completedTasks.size(); i++) {
+//            result.append(generateTaskForReport(i, completedTasks));
+//        }
+//
+//        System.out.println(result);
     }
 
     public void showPendingTasks() {
@@ -200,24 +135,31 @@ public class TaskManager {
                 .filter(t -> !t.getIsCompleted())
                 .toList();
 
-        if (pendingTasks.isEmpty()) {
-            System.out.println("Невыполненных задач не найдено");
-            return;
-        }
+        String report = generateReport("Не выполненные задачи: ","Не выполненных задач не найдено", pendingTasks);
+        System.out.println(report);
 
-        StringBuilder result = new StringBuilder("Невыполненные задачи:\n");
-
-        for (int i = 0; i < pendingTasks.size(); i++) {
-            result.append(generateTaskForReport(i, pendingTasks));
-        }
-
-        System.out.println(result);
+//        if (pendingTasks.isEmpty()) {
+//            System.out.println("Невыполненных задач не найдено");
+//            return;
+//        }
+//
+//        StringBuilder result = new StringBuilder("Невыполненные задачи:\n");
+//
+//        for (int i = 0; i < pendingTasks.size(); i++) {
+//            result.append(generateTaskForReport(i, pendingTasks));
+//        }
+//
+//        System.out.println(result);
     }
 
-    private String generateReport() {
-        StringBuilder result = new StringBuilder("=== Список задач ===\n");
-        for (int i = 0; i < tasks.size(); i++) {
-            result.append(generateTaskForReport(i, tasks));
+    private String generateReport(String titleOfList, String emptyListMsg, List<Task> listOfTasks) {
+        if (listOfTasks.isEmpty()) {
+            return emptyListMsg;
+        }
+
+        StringBuilder result = new StringBuilder("=== " + titleOfList + " ===\n");
+        for (int i = 0; i < listOfTasks.size(); i++) {
+            result.append(generateTaskForReport(i, listOfTasks));
         }
         result.append("=== Конец отчёта ===");
 
